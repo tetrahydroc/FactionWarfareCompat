@@ -35,6 +35,28 @@ var spawner_hooks: Node = null  # back-ref for replenish_regular_pool
 var _gameData: Resource = preload("res://Resources/GameData.tres")
 
 
+# --- Meta access helpers ----------------------------------------------------
+# Godot 4.6's Object.get_meta(key, default) emits an error to the log every
+# time the key is missing, even when a default is supplied. The return value
+# is correct (it returns the default) but the log spam confuses users. These
+# helpers gate every read with has_meta so unset keys are silent.
+
+static func _meta_get(node: Object, key: String, default_value: Variant) -> Variant:
+	if node.has_meta(key):
+		return node.get_meta(key)
+	return default_value
+
+static func _meta_get_float(node: Object, key: String, default_value: float) -> float:
+	if node.has_meta(key):
+		return float(node.get_meta(key))
+	return default_value
+
+static func _meta_get_bool(node: Object, key: String, default_value: bool) -> bool:
+	if node.has_meta(key):
+		return bool(node.get_meta(key))
+	return default_value
+
+
 func register_hooks(lib, main_ref: Node, spawner_hooks_ref: Node) -> void:
 	_lib = lib
 	main = main_ref
@@ -132,7 +154,7 @@ func _on_parameters_post(delta: float) -> void:
 			ai.health = 100.0 * EnemyAISettings.ai_health_multiplier
 
 	_refresh_player_alignment_state(ai)
-	var ppt: float = float(ai.get_meta("playerPriorityTimer", 0.0))
+	var ppt: float = _meta_get_float(ai, "playerPriorityTimer", 0.0)
 	if ppt > 0.0:
 		ppt = max(0.0, ppt - delta)
 		ai.set_meta("playerPriorityTimer", ppt)
@@ -228,7 +250,7 @@ func _on_loscheck_post(target: Vector3) -> void:
 		return
 	# Restore extraVisibility if we stashed it.
 	if ai.has_meta("_fw_los_orig_extra"):
-		var orig_extra: float = float(ai.get_meta("_fw_los_orig_extra"))
+		var orig_extra: float = _meta_get_float(ai, "_fw_los_orig_extra", 0.0)
 		ai.extraVisibility = orig_extra
 		ai.remove_meta("_fw_los_orig_extra")
 	# Else-branch fixup: vanilla's else used Vector3(0,0,200). Multiply post.
@@ -282,8 +304,8 @@ func _on_hearing_post() -> void:
 		return
 	if !ai.has_meta("_fw_hearing_orig_dist"):
 		return
-	var orig_dist: float = float(ai.get_meta("_fw_hearing_orig_dist"))
-	var orig_lkl = ai.get_meta("_fw_hearing_orig_lkl")
+	var orig_dist: float = _meta_get_float(ai, "_fw_hearing_orig_dist", 0.0)
+	var orig_lkl = _meta_get(ai, "_fw_hearing_orig_lkl", Vector3.ZERO)
 	var was_skip: bool = ai.has_meta("_fw_hearing_skip")
 	ai.playerDistance3D = orig_dist
 	ai.remove_meta("_fw_hearing_orig_dist")
@@ -317,7 +339,7 @@ func _on_firefreq_post() -> void:
 	var ai = _lib._caller
 	if ai == null or not ai.has_meta("_fw_freq_orig_dist"):
 		return
-	ai.playerDistance3D = float(ai.get_meta("_fw_freq_orig_dist"))
+	ai.playerDistance3D = _meta_get_float(ai, "_fw_freq_orig_dist", ai.playerDistance3D)
 	ai.remove_meta("_fw_freq_orig_dist")
 	var rate_mult: float = max(0.1, EnemyAISettings.ai_fire_rate_multiplier)
 	ai.fireTime = max(0.05, ai.fireTime / rate_mult)
@@ -350,7 +372,7 @@ func _waypoint_pre_swap(ai) -> void:
 func _waypoint_post_restore(ai) -> void:
 	if ai == null or not ai.has_meta("_fw_wp_orig_pp"):
 		return
-	ai.playerPosition = ai.get_meta("_fw_wp_orig_pp")
+	ai.playerPosition = _meta_get(ai, "_fw_wp_orig_pp", ai.playerPosition)
 	ai.remove_meta("_fw_wp_orig_pp")
 
 
@@ -373,7 +395,7 @@ func _on_spine_post(_delta: float) -> void:
 	var ai = _lib._caller
 	if ai == null or not ai.has_meta("_fw_spine_orig_lkl"):
 		return
-	ai.LKL = ai.get_meta("_fw_spine_orig_lkl")
+	ai.LKL = _meta_get(ai, "_fw_spine_orig_lkl", ai.LKL)
 	ai.remove_meta("_fw_spine_orig_lkl")
 
 
@@ -387,7 +409,7 @@ func _replace_sensor(delta: float) -> void:
 	if ai == null:
 		return
 	ai.sensorTimer += delta
-	var aas: float = float(ai.get_meta("aiAudioSenseTimer", 0.0)) - delta
+	var aas: float = _meta_get_float(ai, "aiAudioSenseTimer", 0.0) - delta
 	ai.set_meta("aiAudioSenseTimer", aas)
 
 	if ai.sensorTimer > ai.sensorCycle:
@@ -395,7 +417,7 @@ func _replace_sensor(delta: float) -> void:
 
 		if _custom_ai_targeting_active(ai):
 			_update_target_visibility(ai)
-			if !player_detected and _has_valid_ai_target(ai) and bool(ai.get_meta("currentAITargetVisible", false)):
+			if !player_detected and _has_valid_ai_target(ai) and _meta_get_bool(ai, "currentAITargetVisible", false):
 				ai.lastKnownLocation = _get_ai_target_position(ai)
 				ai.playerVisible = true
 				if ai.currentState == ai.State.Wander or ai.currentState == ai.State.Guard or ai.currentState == ai.State.Patrol:
@@ -403,7 +425,7 @@ func _replace_sensor(delta: float) -> void:
 				elif ai.currentState == ai.State.Ambush:
 					ai.ChangeState("Combat")
 
-		if !_player_priority_active(ai) and _custom_ai_targeting_active(ai) and !_has_stable_visible_ai_target(ai) and float(ai.get_meta("aiAudioSenseTimer", 0.0)) <= 0.0:
+		if !_player_priority_active(ai) and _custom_ai_targeting_active(ai) and !_has_stable_visible_ai_target(ai) and _meta_get_float(ai, "aiAudioSenseTimer", 0.0) <= 0.0:
 			_sense_ai_audio(ai)
 			ai.set_meta("aiAudioSenseTimer", _current_ai_audio_cycle(ai))
 
@@ -704,12 +726,36 @@ func _faction_warfare_active(ai: Node) -> bool:
 
 
 func _player_priority_active(ai: Node) -> bool:
-	return float(ai.get_meta("playerPriorityTimer", 0.0)) > 0.0
+	return _meta_get_float(ai, "playerPriorityTimer", 0.0) > 0.0
 
 
 func _can_target_player(ai: Node) -> bool:
+	# Other mods may hide the player by removing them from the "Player" group
+	# (JCM's "Enemies Ignore Player" does this). When that happens, AI should
+	# skip all player-targeting logic but keep AI-vs-AI behavior intact.
+	# Faction Warfare's hooks all funnel through _can_target_player as the
+	# player-detection gate, so checking the group here covers Sensor/Hearing/
+	# FireDetection in one place without touching sensorActive.
+	if _player_is_hidden():
+		return false
 	var aligned := _player_aligned_faction()
 	return aligned == "" or aligned != _self_faction(ai)
+
+
+# Cache the player-controller node since the lookup walks the scene tree.
+# Refresh on scene change (controller becomes invalid).
+var _cached_controller: Node = null
+
+
+func _player_is_hidden() -> bool:
+	if not is_instance_valid(_cached_controller):
+		var scene := get_tree().current_scene
+		if scene == null:
+			return false  # no scene loaded, no hiding to detect
+		_cached_controller = scene.get_node_or_null("Core/Controller")
+		if _cached_controller == null:
+			return false  # not in a scene with a controller (menu, etc.)
+	return not _cached_controller.is_in_group("Player")
 
 
 func _player_aligned_faction() -> String:
@@ -722,7 +768,7 @@ func _player_aligned_faction() -> String:
 
 func _self_faction(ai: Node) -> String:
 	if ai.has_meta("enemy_ai_faction"):
-		return str(ai.get_meta("enemy_ai_faction"))
+		return str(_meta_get(ai, "enemy_ai_faction", "Unknown"))
 	return "Unknown"
 
 
@@ -761,7 +807,7 @@ func _refresh_player_alignment_state(ai: Node) -> void:
 
 func _activate_player_priority(ai: Node, reason: String, duration: float) -> void:
 	var was_active := _player_priority_active(ai)
-	var current: float = float(ai.get_meta("playerPriorityTimer", 0.0))
+	var current: float = _meta_get_float(ai, "playerPriorityTimer", 0.0)
 	ai.set_meta("playerPriorityTimer", max(current, duration))
 	ai.set_meta("playerPriorityReason", reason)
 	ai.lastKnownLocation = ai.playerPosition
@@ -784,8 +830,8 @@ func _active_ai_count(ai: Node) -> int:
 
 func _current_target_refresh_cycle(ai: Node) -> float:
 	var active_count := _active_ai_count(ai)
-	var jitter: float = float(ai.get_meta("targetRefreshJitter", 0.0))
-	var base_cycle: float = float(ai.get_meta("targetRefreshCycle", 0.4)) + jitter
+	var jitter: float = _meta_get_float(ai, "targetRefreshJitter", 0.0)
+	var base_cycle: float = _meta_get_float(ai, "targetRefreshCycle", 0.4) + jitter
 	if active_count >= 64:   base_cycle = 1.45 + jitter
 	elif active_count >= 60: base_cycle = 1.36 + jitter
 	elif active_count >= 56: base_cycle = 1.3 + jitter
@@ -804,7 +850,7 @@ func _current_target_refresh_cycle(ai: Node) -> float:
 
 func _current_target_visibility_cycle(ai: Node) -> float:
 	var active_count := _active_ai_count(ai)
-	var jitter: float = float(ai.get_meta("targetVisibilityJitter", 0.0))
+	var jitter: float = _meta_get_float(ai, "targetVisibilityJitter", 0.0)
 	var base_cycle: float = 0.08 + jitter
 	if active_count >= 64:   base_cycle = 0.42 + jitter
 	elif active_count >= 60: base_cycle = 0.38 + jitter
@@ -816,7 +862,7 @@ func _current_target_visibility_cycle(ai: Node) -> float:
 	elif active_count >= 32: base_cycle = 0.18 + jitter
 	elif active_count >= 24: base_cycle = 0.12 + jitter
 	if _has_valid_ai_target(ai):
-		var dist: float = float(ai.get_meta("currentAITargetDistance", 9999.0))
+		var dist: float = _meta_get_float(ai, "currentAITargetDistance", 9999.0)
 		if dist > 90.0:
 			return base_cycle * 1.6
 		if dist > 50.0:
@@ -828,7 +874,7 @@ func _current_target_visibility_cycle(ai: Node) -> float:
 
 func _current_ai_audio_cycle(ai: Node) -> float:
 	var active_count := _active_ai_count(ai)
-	var jitter: float = float(ai.get_meta("aiAudioSenseJitter", 0.0))
+	var jitter: float = _meta_get_float(ai, "aiAudioSenseJitter", 0.0)
 	if active_count >= 64: return 1.35 + jitter
 	if active_count >= 60: return 1.25 + jitter
 	if active_count >= 56: return 1.15 + jitter
@@ -866,12 +912,12 @@ func _update_hostile_ai_targeting(ai: Node, delta: float) -> void:
 		return
 
 	var current_refresh_cycle := _current_target_refresh_cycle(ai)
-	var refresh_timer: float = float(ai.get_meta("targetRefreshTimer", 0.0))
+	var refresh_timer: float = _meta_get_float(ai, "targetRefreshTimer", 0.0)
 	if refresh_timer > current_refresh_cycle:
 		refresh_timer = current_refresh_cycle
 
 	var current_visibility_cycle := _current_target_visibility_cycle(ai)
-	var visibility_timer: float = float(ai.get_meta("targetVisibilityTimer", 0.0))
+	var visibility_timer: float = _meta_get_float(ai, "targetVisibilityTimer", 0.0)
 	if visibility_timer > current_visibility_cycle:
 		visibility_timer = current_visibility_cycle
 
@@ -879,7 +925,7 @@ func _update_hostile_ai_targeting(ai: Node, delta: float) -> void:
 	visibility_timer -= delta
 
 	if !_has_valid_ai_target(ai) or refresh_timer <= 0.0:
-		var previousTarget = ai.get_meta("currentAITarget", null)
+		var previousTarget = _meta_get(ai, "currentAITarget", null)
 		var newTarget: Node3D = _acquire_hostile_ai_target(ai)
 		ai.set_meta("currentAITarget", newTarget)
 		refresh_timer = current_refresh_cycle
@@ -892,7 +938,7 @@ func _update_hostile_ai_targeting(ai: Node, delta: float) -> void:
 	if !_has_valid_ai_target(ai):
 		_update_target_visibility(ai)
 	else:
-		var target: Node3D = ai.get_meta("currentAITarget")
+		var target: Node3D = _meta_get(ai, "currentAITarget", null)
 		ai.set_meta("currentAITargetDistance", ai.global_position.distance_to(target.global_position))
 		_set_target_label(ai)
 		if visibility_timer <= 0.0:
@@ -914,7 +960,7 @@ func _sense_ai_audio(ai: Node) -> void:
 	var reason := _get_audible_target_reason(audible_target)
 	if reason == "":
 		reason = "AI sound"
-	var dist: float = float(ai.get_meta("currentAITargetDistance", 0.0))
+	var dist: float = _meta_get_float(ai, "currentAITargetDistance", 0.0)
 	ai.set_meta("targetLabel", "%s %.1fm" % [_self_or_target_faction_name(audible_target), dist])
 	if ai.currentState == ai.State.Wander or ai.currentState == ai.State.Guard or ai.currentState == ai.State.Patrol:
 		ai.Decision()
@@ -1000,12 +1046,12 @@ func _choose_hostile_target_with_hysteresis(ai: Node, best_candidate: Node3D, be
 	if !_has_valid_ai_target(ai):
 		return best_candidate
 	if !is_instance_valid(best_candidate):
-		return ai.get_meta("currentAITarget", null)
-	var current: Node3D = ai.get_meta("currentAITarget", null)
+		return _meta_get(ai, "currentAITarget", null)
+	var current: Node3D = _meta_get(ai, "currentAITarget", null)
 	if best_candidate == current:
 		return current
 	var current_distance: float = ai.global_position.distance_to(current.global_position)
-	if bool(ai.get_meta("currentAITargetVisible", false)):
+	if _meta_get_bool(ai, "currentAITargetVisible", false):
 		if best_distance < current_distance * 0.75:
 			return best_candidate
 		return current
@@ -1032,7 +1078,7 @@ func _is_valid_hostile_ai_target(ai: Node, node) -> bool:
 
 func _update_target_visibility(ai: Node) -> void:
 	if _has_valid_ai_target(ai):
-		var target: Node3D = ai.get_meta("currentAITarget")
+		var target: Node3D = _meta_get(ai, "currentAITarget", null)
 		ai.set_meta("currentAITargetDistance", ai.global_position.distance_to(target.global_position))
 		var visible := _can_see_ai_target(ai, target)
 		ai.set_meta("currentAITargetVisible", visible)
@@ -1074,18 +1120,18 @@ func _can_see_ai_target(ai: Node, target_node: Node3D) -> bool:
 
 
 func _has_valid_ai_target(ai: Node) -> bool:
-	return _is_valid_hostile_ai_target(ai, ai.get_meta("currentAITarget", null))
+	return _is_valid_hostile_ai_target(ai, _meta_get(ai, "currentAITarget", null))
 
 
 func _has_stable_visible_ai_target(ai: Node) -> bool:
-	return _has_valid_ai_target(ai) and bool(ai.get_meta("currentAITargetVisible", false))
+	return _has_valid_ai_target(ai) and _meta_get_bool(ai, "currentAITargetVisible", false)
 
 
 # --- Engagement position/distance/visibility -------------------------------
 
 func _get_ai_target_position(ai: Node, target_node: Node3D = null) -> Vector3:
 	if target_node == null:
-		target_node = ai.get_meta("currentAITarget", null)
+		target_node = _meta_get(ai, "currentAITarget", null)
 	if !is_instance_valid(target_node):
 		return ai.playerPosition
 	var torsoPosition := _get_ai_torso_position(target_node)
@@ -1104,7 +1150,7 @@ func _get_fire_target_position(ai: Node) -> Vector3:
 	if _player_priority_active(ai):
 		return ai.playerPosition + Vector3(0, 1.0, 0)
 	if _has_valid_ai_target(ai):
-		var target: Node3D = ai.get_meta("currentAITarget")
+		var target: Node3D = _meta_get(ai, "currentAITarget", null)
 		var torsoPosition := _get_ai_torso_position(target)
 		if torsoPosition != Vector3.ZERO:
 			return torsoPosition
@@ -1115,7 +1161,7 @@ func _get_spine_target_position(ai: Node) -> Vector3:
 	if _player_priority_active(ai):
 		return ai.playerPosition
 	if _has_valid_ai_target(ai):
-		var target: Node3D = ai.get_meta("currentAITarget")
+		var target: Node3D = _meta_get(ai, "currentAITarget", null)
 		var spineTorso := _get_ai_spine_torso_position(target)
 		if spineTorso != Vector3.ZERO:
 			return spineTorso
@@ -1168,7 +1214,7 @@ func _get_engagement_distance(ai: Node) -> float:
 	if _player_priority_active(ai):
 		return ai.playerDistance3D
 	if _has_valid_ai_target(ai):
-		return float(ai.get_meta("currentAITargetDistance", ai.playerDistance3D))
+		return _meta_get_float(ai, "currentAITargetDistance", ai.playerDistance3D)
 	return ai.playerDistance3D
 
 
@@ -1176,7 +1222,7 @@ func _engagement_visible(ai: Node) -> bool:
 	if _player_priority_active(ai):
 		return ai.playerVisible
 	if _has_valid_ai_target(ai):
-		return bool(ai.get_meta("currentAITargetVisible", false))
+		return _meta_get_bool(ai, "currentAITargetVisible", false)
 	return ai.playerVisible
 
 
@@ -1215,8 +1261,8 @@ func _set_target_label(ai: Node) -> void:
 	if !_has_valid_ai_target(ai):
 		ai.set_meta("targetLabel", "None")
 		return
-	var target: Node3D = ai.get_meta("currentAITarget")
-	var dist: float = float(ai.get_meta("currentAITargetDistance", 0.0))
+	var target: Node3D = _meta_get(ai, "currentAITarget", null)
+	var dist: float = _meta_get_float(ai, "currentAITargetDistance", 0.0)
 	ai.set_meta("targetLabel", "%s %.1fm" % [_self_or_target_faction_name(target), dist])
 
 
@@ -1267,7 +1313,7 @@ func _try_apply_targeted_hitbox_damage(ai: Node, hitCollider) -> bool:
 
 func _get_preferred_hit_targets(ai: Node, hitCollider) -> Array:
 	var targets: Array = []
-	var current: Node3D = ai.get_meta("currentAITarget", null)
+	var current: Node3D = _meta_get(ai, "currentAITarget", null)
 	if is_instance_valid(hitCollider) and hitCollider == current:
 		var directTorso := _get_ai_torso_position(hitCollider)
 		if directTorso != Vector3.ZERO:

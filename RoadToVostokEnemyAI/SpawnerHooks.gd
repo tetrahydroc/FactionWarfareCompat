@@ -22,6 +22,21 @@ var _lib = null
 var main: Node = null  # back-ref to Main.gd for record_spawn/update_status/etc.
 
 
+# --- Meta access helpers ----------------------------------------------------
+# Godot 4.6's Object.get_meta(key, default) emits a log error every time the
+# key is missing, even with a default. has_meta gate makes unset keys silent.
+
+static func _meta_get(node: Object, key: String, default_value: Variant) -> Variant:
+	if node.has_meta(key):
+		return node.get_meta(key)
+	return default_value
+
+static func _meta_get_float(node: Object, key: String, default_value: float) -> float:
+	if node.has_meta(key):
+		return float(node.get_meta(key))
+	return default_value
+
+
 func register_hooks(lib, main_ref: Node) -> void:
 	_lib = lib
 	main = main_ref
@@ -96,7 +111,7 @@ func _replace_create_pools() -> void:
 	spawner.APool.global_position = Vector3(0, 1000, 0)
 	spawner.BPool.global_position = Vector3(0, 1000, 0)
 
-	var faction_pool: Array = spawner.get_meta("factionPool", [])
+	var faction_pool: Array = _meta_get(spawner, "factionPool", [])
 	if !faction_pool.is_empty():
 		for _amount in spawner.spawnPool:
 			var next_scene = faction_pool.pick_random()
@@ -135,7 +150,7 @@ func _on_phys_post(_delta: float) -> void:
 	var spawner = _lib._caller
 	if spawner == null or not spawner.has_meta("_fw_prev_spawnTime"):
 		return
-	var prev: float = float(spawner.get_meta("_fw_prev_spawnTime"))
+	var prev: float = _meta_get_float(spawner, "_fw_prev_spawnTime", 0.0)
 	spawner.remove_meta("_fw_prev_spawnTime")
 	if prev <= 0.0 and spawner.spawnTime > 0.0:
 		var profile := _interval_profile()
@@ -173,35 +188,35 @@ func _on_spawn_wanderer_post() -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	_handle_spawn_result(spawner, "Wanderer", spawner.get_meta("_fw_before_active", spawner.activeAgents))
+	_handle_spawn_result(spawner, "Wanderer", _meta_get(spawner, "_fw_before_active", spawner.activeAgents))
 
 
 func _on_spawn_guard_post() -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	_handle_spawn_result(spawner, "Guard", spawner.get_meta("_fw_before_active", spawner.activeAgents))
+	_handle_spawn_result(spawner, "Guard", _meta_get(spawner, "_fw_before_active", spawner.activeAgents))
 
 
 func _on_spawn_hider_post() -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	_handle_spawn_result(spawner, "Hider", spawner.get_meta("_fw_before_active", spawner.activeAgents))
+	_handle_spawn_result(spawner, "Hider", _meta_get(spawner, "_fw_before_active", spawner.activeAgents))
 
 
 func _on_spawn_minion_post(_pos) -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	_handle_spawn_result(spawner, "Minion", spawner.get_meta("_fw_before_active", spawner.activeAgents))
+	_handle_spawn_result(spawner, "Minion", _meta_get(spawner, "_fw_before_active", spawner.activeAgents))
 
 
 func _on_spawn_boss_post(_pos) -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	_handle_spawn_result(spawner, "Boss", spawner.get_meta("_fw_before_active", spawner.activeAgents))
+	_handle_spawn_result(spawner, "Boss", _meta_get(spawner, "_fw_before_active", spawner.activeAgents))
 
 
 # Public method called from AIHooks's death handler. Refills the regular
@@ -303,7 +318,7 @@ func _dedupe(pool: Array) -> Array:
 
 
 func _describe_faction_pool(spawner: Node) -> String:
-	var faction_pool: Array = spawner.get_meta("factionPool", [])
+	var faction_pool: Array = _meta_get(spawner, "factionPool", [])
 	var names: Array[String] = []
 	for s in faction_pool:
 		names.append(_packed_scene_name(spawner, s))
@@ -343,7 +358,7 @@ func _initial_population(spawner: Node, count: int) -> void:
 func _handle_spawn_result(spawner: Node, spawn_type: String, before_active: int) -> void:
 	spawner.remove_meta("_fw_before_active")
 	if spawner.activeAgents > before_active:
-		var spawned_this_map: int = int(spawner.get_meta("spawnedThisMap", 0)) + 1
+		var spawned_this_map: int = int(_meta_get(spawner, "spawnedThisMap", 0)) + 1
 		spawner.set_meta("spawnedThisMap", spawned_this_map)
 		var spawned_agent = spawner.agents.get_child(spawner.agents.get_child_count() - 1)
 		var spawned_faction := "Unknown"
@@ -412,7 +427,7 @@ func _debug_begin_map(spawner: Node, event_text: String) -> void:
 		"spawn_distance": spawner.spawnDistance,
 		"preset_name": _preset_name(),
 		"rate_name":   _rate_name(),
-		"current_faction": spawner.get_meta("currentFactionName", "Unknown"),
+		"current_faction": _meta_get(spawner, "currentFactionName", "Unknown"),
 		"last_event":  event_text,
 	})
 
@@ -426,7 +441,7 @@ func _debug_record_spawn(spawner: Node, event_text: String, role_name: String, f
 		"spawn_distance": spawner.spawnDistance,
 		"preset_name": _preset_name(),
 		"rate_name":   _rate_name(),
-		"current_faction": spawner.get_meta("currentFactionName", "Unknown"),
+		"current_faction": _meta_get(spawner, "currentFactionName", "Unknown"),
 		"spawn_faction": faction_name,
 		"spawn_role":  role_name,
 	})
@@ -445,7 +460,7 @@ func _status_info(spawner: Node, event_text: String) -> Dictionary:
 		"spawn_distance": spawner.spawnDistance,
 		"preset_name": _preset_name(),
 		"rate_name":   _rate_name(),
-		"current_faction": spawner.get_meta("currentFactionName", "Unknown"),
+		"current_faction": _meta_get(spawner, "currentFactionName", "Unknown"),
 		"last_event":  event_text,
 	}
 
