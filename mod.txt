@@ -1,0 +1,17 @@
+[mod]
+
+name="Faction Warfare + More Enemies"
+id="road-to-vostok-enemy-ai"
+version="2.0.0"
+
+[autoload]
+EnemyAIConfig="res://RoadToVostokEnemyAI/Config.gd"
+EnemyAIMain="res://RoadToVostokEnemyAI/Main.gd"
+
+[hooks]
+"res://Scripts/Character.gd" = "_physics_process, Health, Oxygen, BurnDamage, WeaponDamage, ExplosionDamage, FallDamage, Death"
+"res://Scripts/AISpawner.gd" = "_ready, _physics_process, CreatePools, SpawnWanderer, SpawnGuard, SpawnHider, SpawnMinion, SpawnBoss"
+"res://Scripts/AI.gd" = "Activate, Parameters, ChangeState, Death, LOSCheck, Hearing, FireFrequency, GetHidePoint, GetVantagePoint, GetCoverPoint, GetShiftWaypoint, Spine, Sensor, FireDetection, Decision, Shift, Hunt, Attack, Return, Fire, FireAccuracy, Raycast"
+
+[updates]
+modworkshop=56026

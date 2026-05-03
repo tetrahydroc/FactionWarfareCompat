@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="EnemyAISettings" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://RoadToVostokEnemyAI/EnemyAISettings.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+intensity_preset = 0
+spawn_rate_adjustment = 1
+spawn_limit_bonus = 0
+spawn_pool_bonus = 0
+initial_population_bonus = 0
+spawn_distance = 100
+initial_guard = false
+initial_hider = false
+initial_hider_chance = 25
+disable_hiding = false
+enemy_type_override_enabled = false
+bandit_spawn_mode = 0
+guard_spawn_mode = 0
+military_spawn_mode = 0
+bandit_infighting_enabled = false
+warfare_enabled = false
+player_invulnerable = false
+show_debug_overlay = true
+show_debug_logs = true
+ai_health_multiplier = 1.0
+boss_health_multiplier = 1.0
+ai_sight_multiplier = 1.0
+ai_hearing_multiplier = 1.0
+ai_accuracy_multiplier = 1.0
+ai_fire_rate_multiplier = 1.0
+ai_gunshot_alert_duration = 5.0
+ai_tactics_preset = 1
