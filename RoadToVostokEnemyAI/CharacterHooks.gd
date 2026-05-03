@@ -29,22 +29,18 @@ var _stash_burn: bool = false
 
 func register_hooks(lib) -> void:
 	_lib = lib
-	print("[FW-DIAG] CharacterHooks.register_hooks: lib=%s" % lib)
-	var result: Dictionary = _lib.hook_many({
-		"character-_physics_process-post":  _on_phys_post,
-		"character-health-post":            _on_health_post,
-		"character-oxygen-post":            _on_oxygen_post,
-		"character-burndamage-post":        _on_burn_post,
-		"character-weapondamage-pre":       _on_weapon_pre,
-		"character-weapondamage-post":      _on_weapon_post,
-		"character-explosiondamage-pre":    _on_explosion_pre,
-		"character-explosiondamage-post":   _on_explosion_post,
-		"character-falldamage-pre":         _on_fall_pre,
-		"character-falldamage-post":        _on_fall_post,
-		"character-death-pre":              _on_death_pre,
-		"character-death-post":             _on_death_post,
-	})
-	print("[FW-DIAG] CharacterHooks hook_many result: ok=%s" % result.ok)
+	_lib.hook("character-_physics_process-post",  _on_phys_post)
+	_lib.hook("character-health-post",            _on_health_post)
+	_lib.hook("character-oxygen-post",            _on_oxygen_post)
+	_lib.hook("character-burndamage-post",        _on_burn_post)
+	_lib.hook("character-weapondamage-pre",       _on_weapon_pre)
+	_lib.hook("character-weapondamage-post",      _on_weapon_post)
+	_lib.hook("character-explosiondamage-pre",    _on_explosion_pre)
+	_lib.hook("character-explosiondamage-post",   _on_explosion_post)
+	_lib.hook("character-falldamage-pre",         _on_fall_pre)
+	_lib.hook("character-falldamage-post",        _on_fall_post)
+	_lib.hook("character-death-pre",              _on_death_pre)
+	_lib.hook("character-death-post",             _on_death_post)
 	print("Faction Warfare: Character hooks registered")
 
 
@@ -54,13 +50,7 @@ func _player_invulnerable() -> bool:
 
 # --- Force-state callbacks ---------------------------------------------------
 
-var _diag_phys_seen: bool = false
-
-
 func _on_phys_post(_delta: float) -> void:
-	if not _diag_phys_seen:
-		_diag_phys_seen = true
-		print("[FW-DIAG] CharacterHooks._on_phys_post FIRED (first call)")
 	if _player_invulnerable():
 		_maintain_invulnerable_stats()
 

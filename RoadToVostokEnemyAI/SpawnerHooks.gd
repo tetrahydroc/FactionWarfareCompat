@@ -25,24 +25,20 @@ var main: Node = null  # back-ref to Main.gd for record_spawn/update_status/etc.
 func register_hooks(lib, main_ref: Node) -> void:
 	_lib = lib
 	main = main_ref
-	print("[FW-DIAG] SpawnerHooks.register_hooks: lib=%s main=%s" % [lib, main_ref])
-	var result: Dictionary = _lib.hook_many({
-		"aispawner-_physics_process-pre":   _on_phys_pre,
-		"aispawner-_physics_process-post":  _on_phys_post,
-		"aispawner-_ready":                 _replace_ready,
-		"aispawner-createpools":            _replace_create_pools,
-		"aispawner-spawnwanderer-pre":      _on_spawn_pre_0arg,
-		"aispawner-spawnwanderer-post":     _on_spawn_wanderer_post,
-		"aispawner-spawnguard-pre":         _on_spawn_pre_0arg,
-		"aispawner-spawnguard-post":        _on_spawn_guard_post,
-		"aispawner-spawnhider-pre":         _on_spawn_pre_0arg,
-		"aispawner-spawnhider-post":        _on_spawn_hider_post,
-		"aispawner-spawnminion-pre":        _on_spawn_minion_pre,
-		"aispawner-spawnminion-post":       _on_spawn_minion_post,
-		"aispawner-spawnboss-pre":          _on_spawn_boss_pre,
-		"aispawner-spawnboss-post":         _on_spawn_boss_post,
-	})
-	print("[FW-DIAG] SpawnerHooks hook_many result: ok=%s, results=%s" % [result.ok, result.results])
+	_lib.hook("aispawner-_physics_process-pre",   _on_phys_pre)
+	_lib.hook("aispawner-_physics_process-post",  _on_phys_post)
+	_lib.hook("aispawner-_ready",                 _replace_ready)
+	_lib.hook("aispawner-createpools",            _replace_create_pools)
+	_lib.hook("aispawner-spawnwanderer-pre",      _on_spawn_pre_0arg)
+	_lib.hook("aispawner-spawnwanderer-post",     _on_spawn_wanderer_post)
+	_lib.hook("aispawner-spawnguard-pre",         _on_spawn_pre_0arg)
+	_lib.hook("aispawner-spawnguard-post",        _on_spawn_guard_post)
+	_lib.hook("aispawner-spawnhider-pre",         _on_spawn_pre_0arg)
+	_lib.hook("aispawner-spawnhider-post",        _on_spawn_hider_post)
+	_lib.hook("aispawner-spawnminion-pre",        _on_spawn_minion_pre)
+	_lib.hook("aispawner-spawnminion-post",       _on_spawn_minion_post)
+	_lib.hook("aispawner-spawnboss-pre",          _on_spawn_boss_pre)
+	_lib.hook("aispawner-spawnboss-post",         _on_spawn_boss_post)
 	print("Faction Warfare: AISpawner hooks registered")
 
 
@@ -51,12 +47,9 @@ func register_hooks(lib, main_ref: Node) -> void:
 # spawn limits from the preset profile, run initial population, fire MapStart
 # debug event.
 func _replace_ready() -> void:
-	print("[FW-DIAG] _replace_ready FIRED")
 	var spawner = _lib._caller
 	if spawner == null:
-		print("[FW-DIAG] _replace_ready: spawner is NULL, bailing")
 		return
-	print("[FW-DIAG] _replace_ready: spawner=%s zone=%s" % [spawner, spawner.zone])
 
 	spawner.GetPoints()
 	spawner.HidePoints()
@@ -97,10 +90,8 @@ func _replace_ready() -> void:
 # Vanilla creates a uniform pool from `agent`. We create a mixed-faction pool
 # from the precomputed factionPool meta, plus a single Punisher boss.
 func _replace_create_pools() -> void:
-	print("[FW-DIAG] _replace_create_pools FIRED")
 	var spawner = _lib._caller
 	if spawner == null:
-		print("[FW-DIAG] _replace_create_pools: spawner is NULL, bailing")
 		return
 	spawner.APool.global_position = Vector3(0, 1000, 0)
 	spawner.BPool.global_position = Vector3(0, 1000, 0)
@@ -137,9 +128,6 @@ func _on_phys_pre(_delta: float) -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	if not spawner.has_meta("_fw_diag_phys_seen"):
-		spawner.set_meta("_fw_diag_phys_seen", true)
-		print("[FW-DIAG] _on_phys_pre FIRED (first call) on %s" % spawner)
 	spawner.set_meta("_fw_prev_spawnTime", float(spawner.spawnTime))
 
 
@@ -185,9 +173,6 @@ func _on_spawn_wanderer_post() -> void:
 	var spawner = _lib._caller
 	if spawner == null:
 		return
-	if not spawner.has_meta("_fw_diag_wanderer_seen"):
-		spawner.set_meta("_fw_diag_wanderer_seen", true)
-		print("[FW-DIAG] _on_spawn_wanderer_post FIRED (first call) on %s" % spawner)
 	_handle_spawn_result(spawner, "Wanderer", spawner.get_meta("_fw_before_active", spawner.activeAgents))
 
 
