@@ -29,7 +29,8 @@ var _stash_burn: bool = false
 
 func register_hooks(lib) -> void:
 	_lib = lib
-	_lib.hook_many({
+	print("[FW-DIAG] CharacterHooks.register_hooks: lib=%s" % lib)
+	var result: Dictionary = _lib.hook_many({
 		"character-_physics_process-post":  _on_phys_post,
 		"character-health-post":            _on_health_post,
 		"character-oxygen-post":            _on_oxygen_post,
@@ -43,6 +44,7 @@ func register_hooks(lib) -> void:
 		"character-death-pre":              _on_death_pre,
 		"character-death-post":             _on_death_post,
 	})
+	print("[FW-DIAG] CharacterHooks hook_many result: ok=%s" % result.ok)
 	print("Faction Warfare: Character hooks registered")
 
 
@@ -52,7 +54,13 @@ func _player_invulnerable() -> bool:
 
 # --- Force-state callbacks ---------------------------------------------------
 
+var _diag_phys_seen: bool = false
+
+
 func _on_phys_post(_delta: float) -> void:
+	if not _diag_phys_seen:
+		_diag_phys_seen = true
+		print("[FW-DIAG] CharacterHooks._on_phys_post FIRED (first call)")
 	if _player_invulnerable():
 		_maintain_invulnerable_stats()
 

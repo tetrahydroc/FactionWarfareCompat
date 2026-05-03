@@ -39,7 +39,8 @@ func register_hooks(lib, main_ref: Node, spawner_hooks_ref: Node) -> void:
 	_lib = lib
 	main = main_ref
 	spawner_hooks = spawner_hooks_ref
-	_lib.hook_many({
+	print("[FW-DIAG] AIHooks.register_hooks: lib=%s main=%s spawner_hooks=%s" % [lib, main_ref, spawner_hooks_ref])
+	var result: Dictionary = _lib.hook_many({
 		# Composable -- pre
 		"ai-activate-pre":             _on_activate_pre,
 
@@ -78,7 +79,20 @@ func register_hooks(lib, main_ref: Node, spawner_hooks_ref: Node) -> void:
 		"ai-fireaccuracy":             _replace_fireaccuracy,
 		"ai-raycast":                  _replace_raycast,
 	})
+	print("[FW-DIAG] AIHooks hook_many result: ok=%s, failures=%s" % [
+		result.ok,
+		_diag_failed_hooks(result.results),
+	])
 	print("Faction Warfare: AI hooks registered")
+
+
+# Diagnostic: list any hook names where registration failed (id == -1).
+func _diag_failed_hooks(results: Dictionary) -> Array:
+	var failed: Array = []
+	for k in results:
+		if int(results[k]) == -1:
+			failed.append(k)
+	return failed
 
 
 # === Per-AI state init ======================================================
@@ -111,6 +125,7 @@ func _on_activate_pre() -> void:
 	var ai = _lib._caller
 	if ai == null:
 		return
+	print("[FW-DIAG] _on_activate_pre FIRED on ai=%s boss=%s" % [ai, ai.boss])
 	# Apply health multipliers from settings before vanilla writes the value.
 	# Vanilla's Activate sets `health = 100.0` (or 300 for boss) unconditionally,
 	# so we override it AFTER vanilla via a meta marker; keep the mod state init.
@@ -122,6 +137,9 @@ func _on_parameters_post(delta: float) -> void:
 	var ai = _lib._caller
 	if ai == null:
 		return
+	if not ai.has_meta("_fw_diag_params_seen"):
+		ai.set_meta("_fw_diag_params_seen", true)
+		print("[FW-DIAG] _on_parameters_post FIRED (first call) on ai=%s" % ai)
 	# First-tick health multiplier application. Activate-pre sets the marker;
 	# we apply on the first Parameters-post since vanilla's Activate has run
 	# by then and written the base health.

@@ -61,6 +61,7 @@ var _ai_hooks: Node = null
 
 func _ready():
 	name = "EnemyAIMain"
+	print("[FW-DIAG] Main._ready start")
 
 	# Spin up the per-vanilla-script hook hosts as children of this autoload.
 	# Each one registers its own hooks once frameworks_ready fires.
@@ -75,24 +76,31 @@ func _ready():
 	_ai_hooks = _AIHooksScript.new()
 	_ai_hooks.name = "AIHooks"
 	add_child(_ai_hooks)
+	print("[FW-DIAG] Main._ready: 3 child hook hosts added")
 
 	if Engine.has_meta("RTVModLib"):
 		var lib = Engine.get_meta("RTVModLib")
+		print("[FW-DIAG] Main._ready: RTVModLib found, _is_ready=%s" % lib._is_ready)
 		if lib._is_ready:
 			_register_all_hooks(lib)
 		else:
 			lib.frameworks_ready.connect(_register_all_hooks.bind(lib))
+			print("[FW-DIAG] Main._ready: connected to frameworks_ready (deferred path)")
 	else:
 		push_warning("Faction Warfare: RTVModLib not found; hooks unavailable")
+		print("[FW-DIAG] Main._ready: RTVModLib MISSING -- mod will not function")
 
 	call_deferred("_schedule_mcm_compatibility_patch")
 	_ensure_debug_overlay()
+	print("[FW-DIAG] Main._ready end")
 
 
 func _register_all_hooks(lib) -> void:
+	print("[FW-DIAG] _register_all_hooks called, lib=%s" % lib)
 	_character_hooks.register_hooks(lib)
 	_spawner_hooks.register_hooks(lib, self)
 	_ai_hooks.register_hooks(lib, self, _spawner_hooks)
+	print("[FW-DIAG] _register_all_hooks complete")
 
 
 func _process(delta):
