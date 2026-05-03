@@ -96,10 +96,13 @@ func _register_all_hooks(lib) -> void:
 
 
 func _process(delta):
+	# Recreate the overlay if its layer was freed (defensive; shouldn't happen
+	# in normal flow since the autoload owns the layer). Visibility is driven
+	# directly by Config.gd's MCM callback (set_debug_overlay_visible), not
+	# polled here, so toggling MCM updates the overlay immediately without
+	# requiring a process tick to notice.
 	if !is_instance_valid(debugLayer):
 		_ensure_debug_overlay()
-	elif is_instance_valid(debugLabel):
-		debugLabel.visible = EnemyAISettings.show_debug_overlay
 
 	if !mcm_compat_patch_applied and mcm_compat_patch_attempted:
 		mcm_compat_timer -= delta
@@ -256,6 +259,15 @@ func record_suspicious_spawn(event_name: String, active_count: int, info: Dictio
 
 
 # === Debug overlay ==========================================================
+
+# Public: called from Config.gd's MCM callback when the show_debug_overlay
+# toggle changes. Updates the live label visibility immediately. Safe to call
+# before _ensure_debug_overlay has run (no-op if the label isn't built yet;
+# next _ensure_debug_overlay reads the current value during creation).
+func set_debug_overlay_visible(visible: bool) -> void:
+	if is_instance_valid(debugLabel):
+		debugLabel.visible = visible
+
 
 func _ensure_debug_overlay():
 	debugLayer = CanvasLayer.new()

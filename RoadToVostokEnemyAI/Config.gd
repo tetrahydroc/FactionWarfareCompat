@@ -376,7 +376,16 @@ func _on_config_updated(config: ConfigFile):
     enemyAISettings.player_faction_alignment = config.get_value("Dropdown", "player_faction_alignment", {"value": 0})["value"]
     enemyAISettings.corpse_cleanup_limit = config.get_value("Int", "corpse_cleanup_limit", {"value": 20})["value"]
     enemyAISettings.player_invulnerable = config.get_value("Bool", "player_invulnerable", {"value": false})["value"]
-    enemyAISettings.show_debug_overlay = config.get_value("Bool", "show_debug_overlay")["value"]
+    var new_show_debug: bool = config.get_value("Bool", "show_debug_overlay")["value"]
+    enemyAISettings.show_debug_overlay = new_show_debug
+    # Drive the live overlay node directly. Polling EnemyAISettings.show_debug_overlay
+    # in Main.gd's _process should also catch this, but a few users have reported
+    # the overlay refusing to hide after MCM toggle-off until a game restart.
+    # Direct push from the config callback eliminates whatever timing/cache issue
+    # was causing that.
+    var enemy_main = get_node_or_null("/root/EnemyAIMain")
+    if enemy_main and enemy_main.has_method("set_debug_overlay_visible"):
+        enemy_main.set_debug_overlay_visible(new_show_debug)
     enemyAISettings.replenish_spawn_pool = config.get_value("Bool", "replenish_spawn_pool", {"value": true})["value"]
     enemyAISettings.ai_health_multiplier = config.get_value("Float", "ai_health_multiplier")["value"]
     enemyAISettings.boss_health_multiplier = config.get_value("Float", "boss_health_multiplier")["value"]

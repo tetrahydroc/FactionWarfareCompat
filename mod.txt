@@ -2,7 +2,7 @@
 
 name="Faction Warfare + More Enemies"
 id="road-to-vostok-enemy-ai"
-version="2.0.3"
+version="2.0.4"
 
 [autoload]
 EnemyAIConfig="res://RoadToVostokEnemyAI/Config.gd"
